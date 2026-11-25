@@ -15,4 +15,5 @@ export const config = Object.freeze({
   accessTokenSecret: process.env.ACCESS_TOKEN_SECRET,
   refreshTokenSecret: process.env.REFRESH_TOKEN_SECRET,
   groqApiKey: process.env.GROQ_API_KEY,
+  tavilyUrl: process.env.TAVILY_URL,
 });
