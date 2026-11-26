@@ -1,21 +1,75 @@
-import { useCallback } from 'react'
-import { useDispatch, useSelector } from 'react-redux'
-import { clearAuthError, loginUser, logoutUser, refreshSession, registerUser } from '../State/authSlice'
+import { useState } from 'react';
+import { useDispatch, useSelector } from 'react-redux';
+import { authApi, initializeSession } from './session.js';
+import { getApiError } from '../API/auth.api.js';
+import { sessionCleared, profileReceived } from '../State/auth.slice.js';
 
 export function useAuth() {
-  const dispatch = useDispatch()
-  const auth = useSelector((state) => state.auth)
-  const login = useCallback((payload) => dispatch(loginUser(payload)).unwrap(), [dispatch])
-  const register = useCallback((payload) => dispatch(registerUser(payload)).unwrap(), [dispatch])
-  const refresh = useCallback(() => dispatch(refreshSession()).unwrap(), [dispatch])
-  const logout = useCallback(() => dispatch(logoutUser()).unwrap(), [dispatch])
-  const clearError = useCallback(() => dispatch(clearAuthError()), [dispatch])
-  return {
-    ...auth,
-    login,
-    register,
-    refresh,
-    logout,
-    clearError,
+  return { ...useSelector((state) => state.auth), retrySession: initializeSession };
+}
+
+/** Sign-out without subscribing to auth state, for components that only need the action. */
+export function useSignOut() {
+  const dispatch = useDispatch();
+  const [pending, setPending] = useState(false);
+  const [error, setError] = useState(null);
+
+  async function signOut() {
+    if (pending) return;
+    setPending(true);
+    setError(null);
+    try {
+      await authApi.logout();
+      dispatch(sessionCleared());
+    } catch (failure) {
+      if (failure.response?.status === 401) dispatch(sessionCleared());
+      else {
+        setError(getApiError(failure).message);
+        setPending(false);
+      }
+    }
   }
+
+  return { pending, error, signOut };
+}
+
+export function useAccount() {
+  const auth = useAuth();
+  const dispatch = useDispatch();
+  const [pending, setPending] = useState(null);
+  const [error, setError] = useState(null);
+  const [notice, setNotice] = useState(null);
+
+  async function logout() {
+    if (pending) return;
+    setPending('logout');
+    setError(null);
+    setNotice(null);
+    try {
+      await authApi.logout();
+      dispatch(sessionCleared());
+    } catch (error) {
+      if (error.response?.status === 401) dispatch(sessionCleared());
+      else setError(getApiError(error).message);
+    } finally {
+      setPending(null);
+    }
+  }
+
+  async function reloadProfile() {
+    if (pending) return;
+    setPending('profile');
+    setError(null);
+    setNotice(null);
+    try {
+      dispatch(profileReceived(await authApi.me()));
+      setNotice('Your account details are up to date.');
+    } catch (error) {
+      setError(getApiError(error).message);
+    } finally {
+      setPending(null);
+    }
+  }
+
+  return { ...auth, pending, error, notice, logout, reloadProfile };
 }

@@ -1,16 +1,34 @@
-export default function FormField({ label, hint, error, ...inputProps }) {
+import { Eye, EyeOff } from 'lucide-react';
+
+export function FormField({ label, name, error, hint, showPassword, onToggle, ...inputProps }) {
+  const description = error ? `${name}-error` : hint ? `${name}-hint` : undefined;
   return (
-    <label className="block">
-      <span className="mb-2 block text-sm font-medium text-slate-800">{label}</span>
-      <input
-        {...inputProps}
-        className="h-12 w-full rounded-lg border border-slate-200 bg-white px-3.5 text-sm text-slate-950 outline-none transition placeholder:text-slate-400 focus:border-[#2563eb] focus:ring-4 focus:ring-blue-50"
-      />
-      {(hint || error) && (
-        <span className={`mt-2 block text-xs ${error ? 'text-red-600' : 'text-slate-500'}`}>
-          {error || hint}
-        </span>
-      )}
-    </label>
-  )
+    <div>
+      <label htmlFor={name} className="mb-2.5 block text-[13px] font-medium">{label}</label>
+      <div className="relative">
+        <input
+          {...inputProps}
+          id={name}
+          name={name}
+          aria-invalid={Boolean(error)}
+          aria-describedby={description}
+          className={`form-input ${onToggle ? 'pr-14' : ''} ${error ? 'border-error' : ''}`}
+        />
+        {onToggle && (
+          <button
+            type="button"
+            className="absolute inset-y-0 right-1 flex w-12 items-center justify-center rounded-lg text-muted hover:text-forest"
+            aria-label={showPassword ? 'Hide password' : 'Show password'}
+            aria-pressed={showPassword}
+            onClick={onToggle}
+          >
+            {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+          </button>
+        )}
+      </div>
+      {error
+        ? <p id={`${name}-error`} className="mt-2 text-xs leading-5 text-error">{error}</p>
+        : hint && <p id={`${name}-hint`} className="mt-2 text-xs leading-5 text-muted">{hint}</p>}
+    </div>
+  );
 }
