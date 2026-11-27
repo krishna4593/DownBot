@@ -5,7 +5,7 @@ export const createMessage = (data) => messageModel.create(data);
 export const findMessageById = (id) => messageModel.findById(id);
 
 export const findMessagesByConversation = (conversationId) =>
-  messageModel.find({ conversation: conversationId });
+  messageModel.find({ conversation: conversationId }).sort({ createdAt: 1 });
 
 export const findLatestMessageByConversation = (conversationId) =>
   messageModel.findOne({ conversation: conversationId });

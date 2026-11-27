@@ -1,4 +1,4 @@
-import { AIMessage, HumanMessage } from "langchain";
+import { AIMessage, HumanMessage,SystemMessage } from "langchain";
 import { createConversation, findConversationByIdAndUser, findConversationsByUser } from "../DAO/conversation.dao.js";
 import { createMessage, findMessagesByConversation } from "../DAO/message.dao.js";
 import { generateTitle } from "../services/ai/title.service.js";
@@ -6,7 +6,7 @@ import { AppError } from "../utils/AppError.js";
 import model from "../services/ai/main.service.js";
 import { sendSuccess } from "../utils/apiResponse.js";
 import {MCPAdapter} from "@langchain/mcp-adapters"
-import {createAgent} from "langchain"
+import {createAgent, AIMessageChunk} from "langchain"
 import { config } from "../config/env.js";
 
 
@@ -56,17 +56,37 @@ export async function handleMessage(req,res,next){
     })
 
     const agent = createAgent({model, tools})
-
+    
+      const now = new Date().toLocaleString("en-IN", {
+      timeZone: "Asia/Kolkata",
+      dateStyle: "full",
+      timeStyle: "short"
+    });
     const stream = await agent.stream({
         messages:[
-            new SystemMessage(`
-             -your name is downbot
+            
+             new SystemMessage(`
+               You are Downbot, a helpful assistant. Be accurate and concise. If you don't know something, say "I don't know" instead of guessing.
 
-             -You are a helpful assistant that provides accurate and concise information. If you don't know the answer, say 'I don't know' instead of making up an answer.`),
+CONTEXT
+- Current date and time: ${now} IST.
+- The conversation history is in chronological order. "My last/previous question" means the user message before the current one, not the current one.
+
+WHEN TO SEARCH
+- Do NOT search for: general knowledge, explanations, coding, math, writing, advice, casual chat, or questions about this conversation.
+- DO search for: live scores, news, prices, weather, recent events, or when the user asks you to search. Use earlier messages for context (teams, sport, location) instead of asking the user to repeat it.
+- Use one search per question unless the first result is clearly insufficient.
+
+USING SEARCH RESULTS
+- State only what appears in the results. Never invent scores, overs, or names.
+- Name the source and the time of the data if the result shows one. If you can't tell how recent it is, say so and don't call it "live" or "current".
+- For live sports, mention the match's local time zone and suggest ESPNcricinfo or Cricbuzz for ball-by-ball updates.
+             `),
+               
              ...messages
         ]
     },{
-        stremMode:"messages"
+        streamMode:"messages"
     });
 
     //set headers for sse
@@ -83,8 +103,8 @@ export async function handleMessage(req,res,next){
     let aiChunk= null;
 
     for await(const [chunk] of stream){
-        console.log(chunk);
-
+        
+    if(chunk instanceof AIMessageChunk){
         if(aiChunk==null) {
             aiChunk=chunk
         }else{
@@ -92,6 +112,7 @@ export async function handleMessage(req,res,next){
         }
         res.write(`data:${JSON.stringify({chunk:chunk.content})}\n\n`)
     }
+}
 
     res.end();
 
